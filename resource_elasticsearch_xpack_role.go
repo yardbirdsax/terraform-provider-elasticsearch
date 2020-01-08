@@ -243,7 +243,7 @@ func buildPutRoleBody(d *schema.ResourceData, m interface{}) (string, error) {
 
 	body, err := json.Marshal(role)
 	if err != nil {
-		fmt.Printf("Body : %s", body)
+		log.Printf("[INFO] Body: %s, %+v, %+v", body, err, role)
 		err = fmt.Errorf("Body Error : %s", body)
 	}
 	return string(body[:]), err
