@@ -51,10 +51,27 @@ func resourceElasticsearchXpackRole() *schema.Resource {
 							DiffSuppressFunc: suppressEquivalentJson,
 						},
 						"field_security": {
-							Type:             schema.TypeString,
-							Optional:         true,
-							Default:          "{}",
-							DiffSuppressFunc: suppressEquivalentJson,
+							Type:     schema.TypeSet,
+							Optional: true,
+							MaxItems: 1,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"grant": {
+										Type:     schema.TypeList,
+										Optional: true,
+										Elem:     &schema.Schema{Type: schema.TypeString},
+									},
+									//  If permission has been granted explicitly to some
+									//  fields, you can specify denied fields. The denied fields
+									//  must be a subset of the fields to which permissions were
+									//  granted.
+									"except": {
+										Type:     schema.TypeList,
+										Optional: true,
+										Elem:     &schema.Schema{Type: schema.TypeString},
+									},
+								},
+							},
 						},
 					},
 				},
@@ -222,7 +239,7 @@ func buildPutRoleBody(d *schema.ResourceData, m interface{}) (string, error) {
 		putIndex := PutRoleIndicesPermissions{
 			Names:         indice.Names,
 			Privileges:    indice.Privileges,
-			FieldSecurity: optionalInterfaceJson(indice.FieldSecurity),
+			FieldSecurity: indice.FieldSecurity,
 			Query:         optionalInterfaceJson(indice.Query),
 		}
 		indicesBody = append(indicesBody, putIndex)
@@ -445,8 +462,8 @@ type XPackSecurityApplicationPrivileges struct {
 
 // XPackSecurityIndicesPermissions is the indices permission object of Elasticsearch
 type XPackSecurityIndicesPermissions struct {
-	Names         []string `json:"names"`
-	Privileges    []string `json:"privileges"`
-	FieldSecurity string   `json:"field_security"`
-	Query         string   `json:"query"`
+	Names         []string    `json:"names"`
+	Privileges    []string    `json:"privileges"`
+	FieldSecurity interface{} `json:"field_security"`
+	Query         string      `json:"query"`
 }

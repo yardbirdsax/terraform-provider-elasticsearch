@@ -165,11 +165,30 @@ func expandIndicesPermissionSet(resourcesArray []interface{}) ([]XPackSecurityIn
 			return vperm, fmt.Errorf("Error asserting data as type []byte : %v", item)
 		}
 		obj := XPackSecurityIndicesPermissions{
-			Names:         expandStringList(data["names"].(*schema.Set).List()),
-			Privileges:    expandStringList(data["privileges"].(*schema.Set).List()),
-			FieldSecurity: data["field_security"].(string),
-			Query:         data["query"].(string),
+			Names:      expandStringList(data["names"].(*schema.Set).List()),
+			Privileges: expandStringList(data["privileges"].(*schema.Set).List()),
+			Query:      data["query"].(string),
 		}
+
+		// build optional field level security specifications
+		for _, fieldSecurityEntry := range data["field_security"].(*schema.Set).List() {
+			fieldSecurity := map[string][]interface{}{}
+
+			fieldSecurityData, ok := fieldSecurityEntry.(map[string][]interface{})
+			if !ok {
+				return vperm, fmt.Errorf("Error asserting field security as type map[string][]interface{} : %+v", fieldSecurityEntry)
+			}
+
+			if grantList, ok := fieldSecurityData["grant"]; ok {
+				fieldSecurity["grant"] = grantList
+			}
+
+			if exceptList, ok := fieldSecurityData["except"]; ok {
+				fieldSecurity["except"] = exceptList
+			}
+			obj.FieldSecurity = fieldSecurity
+		}
+
 		vperm = append(vperm, obj)
 	}
 	return vperm, nil
