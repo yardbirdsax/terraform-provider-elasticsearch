@@ -128,11 +128,16 @@ resource "elasticsearch_opendistro_monitor" "test_monitor" {
         "aggregations": {},
         "query": {
           "bool": {
+            "adjust_pure_negative":true,
+            "boost":1,
             "filter": {
               "range": {
                 "@timestamp": {
-                  "gte": "||-1h",
-                  "lte": "",
+                  "boost":1,
+                  "from":"||-1h",
+                  "to":"",
+                  "include_lower":true,
+                  "include_upper":true,
                   "format": "epoch_millis"
                 }
               }
