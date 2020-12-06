@@ -6,7 +6,7 @@
 - Bump aws client to v1.35.33.
 
 ### Added
--
+- Support for specifying ECE API KEY to authenticate to Elastic Cloud Enterprise.
 
 ## [1.5.0] - 2020-10-26
 ### Changed

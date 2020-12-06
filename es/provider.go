@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -101,6 +102,13 @@ func Provider() terraform.ResourceProvider {
 				Description: "The AWS region for use in signing of AWS elasticsearch requests. Must be specified in order to use AWS URL signing with AWS ElasticSearch endpoint exposed on a custom DNS domain.",
 			},
 
+			"bearer_token": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Default:     "",
+				Description: "A bearer token for an Authorization header, e.g. Elastic Cloud Enterprise API key.",
+			},
+
 			"cacert_file": {
 				Type:        schema.TypeString,
 				Optional:    true,
@@ -189,6 +197,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	parsedUrl, err := url.Parse(rawUrl)
 	signAWSRequests := d.Get("sign_aws_requests").(bool)
 	esVersion := d.Get("elasticsearch_version").(string)
+	bearerToken := d.Get("bearer_token").(string)
 	if err != nil {
 		return nil, err
 	}
@@ -214,6 +223,8 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	} else if awsRegion := d.Get("aws_region").(string); awsRegion != "" && signAWSRequests {
 		log.Printf("[INFO] Using AWS: %+v", awsRegion)
 		opts = append(opts, elastic7.SetHttpClient(awsHttpClient(awsRegion, d)), elastic7.SetSniff(false))
+	} else if bearerToken != "" {
+		opts = append(opts, elastic7.SetHttpClient(bearerHttpClient(bearerToken, insecure)), elastic7.SetSniff(false))
 	} else if insecure || cacertFile != "" {
 		opts = append(opts, elastic7.SetHttpClient(tlsHttpClient(d)), elastic7.SetSniff(false))
 	}
@@ -258,6 +269,8 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		} else if awsRegion := d.Get("aws_region").(string); awsRegion != "" && signAWSRequests {
 			log.Printf("[INFO] Using AWS: %+v", awsRegion)
 			opts = append(opts, elastic6.SetHttpClient(awsHttpClient(awsRegion, d)), elastic6.SetSniff(false))
+		} else if bearerToken != "" {
+			opts = append(opts, elastic6.SetHttpClient(bearerHttpClient(bearerToken, insecure)), elastic6.SetSniff(false))
 		} else if insecure || cacertFile != "" {
 			opts = append(opts, elastic6.SetHttpClient(tlsHttpClient(d)), elastic6.SetSniff(false))
 		}
@@ -287,6 +300,8 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		} else if awsRegion := d.Get("aws_region").(string); awsRegion != "" && signAWSRequests {
 			log.Printf("[INFO] Using AWS: %+v", awsRegion)
 			opts = append(opts, elastic5.SetHttpClient(awsHttpClient(awsRegion, d)), elastic5.SetSniff(false))
+		} else if bearerToken != "" {
+			opts = append(opts, elastic5.SetHttpClient(bearerHttpClient(bearerToken, insecure)), elastic5.SetSniff(false))
 		} else if insecure || cacertFile != "" {
 			opts = append(opts, elastic5.SetHttpClient(tlsHttpClient(d)), elastic5.SetSniff(false))
 		}
@@ -359,6 +374,20 @@ func awsSession(region string, d *schema.ResourceData) *awssession.Session {
 func awsHttpClient(region string, d *schema.ResourceData) *http.Client {
 	signer := awssigv4.NewSigner(awsSession(region, d).Config.Credentials)
 	client, _ := aws_signing_client.New(signer, nil, "es", region)
+
+	return client
+}
+
+func bearerHttpClient(token string, insecure bool) *http.Client {
+	client := http.DefaultClient
+
+	rt := WithHeader(client.Transport)
+	rt.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+	client.Transport = rt
+
+	if insecure {
+		client.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify = true
+	}
 
 	return client
 }
