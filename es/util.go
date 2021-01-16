@@ -75,6 +75,10 @@ func normalizeDestination(tpl map[string]interface{}) {
 	delete(tpl, "schema_version")
 }
 
+func normalizeDetector(tpl map[string]interface{}) {
+	delete(tpl, "schema_version")
+}
+
 func normalizeMonitor(tpl map[string]interface{}) {
 	delete(tpl, "last_update_time")
 	delete(tpl, "enabled_time")
